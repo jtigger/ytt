@@ -17,6 +17,7 @@ type Type interface {
 var _ Type = (*DocumentType)(nil)
 var _ Type = (*MapType)(nil)
 var _ Type = (*MapItemType)(nil)
+var _ Type = (*ArrayType)(nil)
 
 type Typeable interface {
 	// TODO: extract methods common to Node and Typeable to a shared interface?
@@ -29,10 +30,14 @@ type Typeable interface {
 var _ Typeable = (*Document)(nil)
 var _ Typeable = (*Map)(nil)
 var _ Typeable = (*MapItem)(nil)
+var _ Typeable = (*Array)(nil)
+var _ Typeable = (*ArrayItem)(nil)
 
 func (n *Document) SetType(t Type) { n.Type = t }
 func (n *Map) SetType(t Type)      { n.Type = t }
 func (n *MapItem) SetType(t Type)  { n.Type = t }
+func (n *Array) SetType(t Type)    { n.Type = t }
+func (n *ArrayItem) SetType(t Type)    { n.Type = t }
 
 type DocumentType struct {
 	Source    *Document
@@ -45,6 +50,9 @@ type MapItemType struct {
 	Key       interface{} // usually a string
 	ValueType Type
 }
+type ArrayType struct {
+	ItemsType Type
+}
 
 type ScalarType struct {
 	Type interface{}
@@ -56,7 +64,9 @@ func (t *DocumentType) CheckAllows(item *MapItem) TypeCheck {
 func (m MapItemType) CheckAllows(item *MapItem) TypeCheck {
 	panic("Attempt to check if a MapItem is allowed as a value of a MapItem.")
 }
-
+func (a ArrayType) CheckAllows(item *MapItem) TypeCheck {
+	panic("Attempt to check if a MapItem is allowed as a value of an Array.")
+}
 func (m ScalarType) CheckAllows(item *MapItem) TypeCheck {
 	panic("Attempt to check if a MapItem is allowed as a value of a ScalarType.")
 }
@@ -111,6 +121,9 @@ func (t *MapItemType) AssignTypeTo(typeable Typeable) (chk TypeCheck) {
 		childCheck := t.ValueType.AssignTypeTo(typeableValue)
 		chk.Violations = append(chk.Violations, childCheck.Violations...)
 	} // else, at a leaf
+	return
+}
+func (a ArrayType) AssignTypeTo(typeable Typeable) (chk TypeCheck) {
 	return
 }
 

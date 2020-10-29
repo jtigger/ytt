@@ -28,7 +28,10 @@ func NewDocumentSchema(doc *Document) (*DocumentSchema, error) {
 
 	switch typedDocumentValue := doc.Value.(type) {
 	case *Map:
-		valueType, _ := NewMapType(typedDocumentValue)
+		valueType, err := NewMapType(typedDocumentValue)
+		if err != nil {
+			return nil, err
+		}
 
 		docType.ValueType = valueType
 	case *Array:
