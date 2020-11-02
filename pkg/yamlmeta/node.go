@@ -199,6 +199,7 @@ func (n *Map) Check() TypeCheck {
 	typeCheck := TypeCheck{}
 	violationErrorMessage := "Map item '%s' at %s was not defined in schema"
 
+	//todo: Maybe this could be reported as the whole map is undefined in the schema, not each item?
 	if n.Type == nil {
 		for _, item := range n.Items {
 			violation := fmt.Sprintf(violationErrorMessage, item.Key, item.Position.AsCompactString())
@@ -234,6 +235,8 @@ func (n *MapItem) Check() TypeCheck {
 		check := typedValue.Check()
 		typeCheck.Violations = append(typeCheck.Violations, check.Violations...)
 
+	//todo: support case:Array
+
 	case string:
 		scalarType, ok := mapItem.ValueType.(*ScalarType)
 		if !ok {
@@ -256,6 +259,19 @@ func (n *MapItem) Check() TypeCheck {
 		}
 
 		if _, ok := scalarType.Type.(int); !ok {
+			violation := fmt.Sprintf(violationErrorMessage, n.Key, n.Position.AsCompactString(), typedValue, scalarType.Type)
+			typeCheck.Violations = append(typeCheck.Violations, violation)
+		}
+
+	case bool:
+		scalarType, ok := mapItem.ValueType.(*ScalarType)
+		if !ok {
+			violation := fmt.Sprintf(violationErrorMessage, n.Key, n.Position.AsCompactString(), typedValue, mapItem.ValueType)
+			typeCheck.Violations = append(typeCheck.Violations, violation)
+			return typeCheck
+		}
+
+		if _, ok := scalarType.Type.(bool); !ok {
 			violation := fmt.Sprintf(violationErrorMessage, n.Key, n.Position.AsCompactString(), typedValue, scalarType.Type)
 			typeCheck.Violations = append(typeCheck.Violations, violation)
 		}

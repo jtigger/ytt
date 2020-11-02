@@ -22,6 +22,7 @@ db_conn:
   password: ""
   metadata:
     run: jobName
+  tls_only: false
 top_level: ""
 `
 	dataValuesYAML := `#@data/values
@@ -33,6 +34,7 @@ db_conn:
   password: changeme
   metadata:
     run: ./build.sh
+  tls_only: true
 top_level: key
 `
 	templateYAML := `---
@@ -110,7 +112,6 @@ rendered: true`
 	}
 }
 
-
 func TestDataValuesNotConformingToEmptySchemaFailsCheck(t *testing.T) {
 	schemaYAML := `#@schema/match data_values=True
 ---
@@ -177,14 +178,28 @@ db_conn:
 
 }
 
-func TestDataValuesAndSchemaContainsArrayFailsCheck(t *testing.T) {
+func TestArrayDataValuesNotConformingToSchemaFailsCheck(t *testing.T) {
 	schemaYAML := `#@schema/match data_values=True
 ---
-- ""
+clients:
+- id: 0
+  name: ""
+  flags:
+  - name: ""
+    set: false
 `
 	dataValuesYAML := `#@data/values
 ---
-- test
+clients:
+- id: 1
+  name: Alice
+  flags:
+  - name: secure
+    value: true   #! key should be "set"
+- id: 2
+  name: Bob
+  flags:
+  - secure
 `
 
 	filesToProcess := files.NewSortedFiles([]*files.File{
@@ -198,11 +213,11 @@ func TestDataValuesAndSchemaContainsArrayFailsCheck(t *testing.T) {
 	out := opts.RunWithFiles(cmdtpl.TemplateInput{Files: filesToProcess}, ui)
 
 	if out.Err == nil {
-		t.Fatalf("Expected an error about arrays not being supported in schemas, but succeeded.")
+		t.Fatalf("Expected an error about the schema check failures, but succeeded.")
 	}
-	expectedErr := "Arrays are currently not supported in schema"
+	expectedErr := "Typechecking violations found: [Map item 'port' at dataValues.yml:4 was type string when int was expected, Map item 'main' at dataValues.yml:6 was type int when string was expected, Map item 'password' at dataValues.yml:7 is not defined in schema]"
 	if !strings.Contains(out.Err.Error(), expectedErr) {
-		t.Fatalf("Expected an error about about arrays not being supported, but got: %s", out.Err.Error())
+		t.Fatalf("Expected an error about a schema check failure, but got: %s", out.Err.Error())
 	}
 
 }

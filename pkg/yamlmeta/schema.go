@@ -35,7 +35,12 @@ func NewDocumentSchema(doc *Document) (*DocumentSchema, error) {
 
 		docType.ValueType = valueType
 	case *Array:
-		return &DocumentSchema{}, NewArraySchema()
+		valueType, err := NewArrayType(typedDocumentValue)
+		if err != nil {
+			return nil, err
+		}
+
+		docType.ValueType = valueType
 	}
 	return &DocumentSchema{
 		Name:    "dataValues",
@@ -65,18 +70,50 @@ func NewMapItemType(item *MapItem) (*MapItemType, error) {
 			return nil, err
 		}
 		return &MapItemType{Key: item.Key, ValueType: mapType}, nil
+	case *Array:
+		arrayType, err := NewArrayType(typedContent)
+		if err != nil {
+			return nil, err
+		}
+		return &MapItemType{Key: item.Key, ValueType: arrayType}, nil
 	case string:
 		return &MapItemType{Key: item.Key, ValueType: &ScalarType{Type: *new(string)}}, nil
 	case int:
 		return &MapItemType{Key: item.Key, ValueType: &ScalarType{Type: *new(int)}}, nil
-	case *Array:
-		return nil, NewArraySchema()
+	case bool:
+		return &MapItemType{Key: item.Key, ValueType: &ScalarType{Type: *new(bool)}}, nil
 	}
-	return nil, fmt.Errorf("Map Item type did not match any know types")
+	return nil, fmt.Errorf("Map Item type did not match any known types")
 }
 
-func NewArraySchema() error {
-	return fmt.Errorf("Arrays are currently not supported in schema")
+func NewArrayType(a *Array) (*ArrayType, error) {
+	if len(a.Items) != 1 {
+		return nil, fmt.Errorf("Too many elements in the array to determine type. Need 1, given %n", len(a.Items))
+	}
+
+	switch typedContent := a.Items[0].Value.(type) {
+	case *Map:
+		mapType, err := NewMapType(typedContent)
+		if err != nil {
+			return nil, err
+		}
+		return &ArrayType{ItemsType: mapType}, nil
+	case *Array:
+		arrayType, err := NewArrayType(typedContent)
+		if err != nil {
+			return nil, err
+		}
+		return &ArrayType{ItemsType: arrayType}, nil
+	case string:
+		return &ArrayType{ItemsType: &ScalarType{Type: *new(string)}}, nil
+	case int:
+		return &ArrayType{ItemsType: &ScalarType{Type: *new(int)}}, nil
+	case bool:
+		return &ArrayType{ItemsType: &ScalarType{Type: *new(bool)}}, nil
+	}
+
+
+	return nil, fmt.Errorf("Array type did not match any know types")
 }
 
 func (as *AnySchema) AssignType(typeable Typeable) TypeCheck { return TypeCheck{} }
